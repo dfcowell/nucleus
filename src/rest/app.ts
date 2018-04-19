@@ -22,6 +22,14 @@ const requireLogin: express.RequestHandler = (req, res, next) => {
   next();
 };
 
+const requireAdmin: express.RequestHandler = (req, res, next) => {
+  if (!(req.user && (req.user as User).isAdmin)) {
+    d(`Non-admin user attempted to access: ${req.url}`);
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
+}
+
 const checkField = (req: Express.Request, res: Express.Response, field: string) => {
   if (!req.body) {
     res.status(400).json({
@@ -74,7 +82,7 @@ const MAGIC_NAMES = [
   'public.key',
 ];
 
-router.post('/', requireLogin, a(async (req, res) => {
+router.post('/', requireLogin, requireAdmin, a(async (req, res) => {
   if (checkField(req, res, 'name')) {
     // It's unlikely but let's not shoot ourselves in the foot
     // In the healthcheck we use __healthcheck as a magic file to

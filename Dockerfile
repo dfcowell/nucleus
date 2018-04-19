@@ -1,15 +1,15 @@
-FROM node:6
+FROM node:8.10
+
+RUN apt-get update && apt-get install -y rpm createrepo apt-utils dpkg-dev gnupg
 
 COPY . /opt/service/
 WORKDIR /opt/service
 
 RUN npm rebuild
-RUN rm config.js
-RUN mv config.prod.js config.js
 RUN npm run build-fe-prod
 RUN npm run build-server
-RUN npm prune --production
+#RUN npm prune --production
 
 EXPOSE 8080
 
-ENTRYPOINT ["npm", "run", "start-server", "--"]
+ENTRYPOINT ["/opt/service/entrypoint.sh"]

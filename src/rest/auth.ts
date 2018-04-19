@@ -42,6 +42,7 @@ switch (sessionConfig.type) {
       sessionOpts.store = new RedisStore({
         host: sessionConfig.redis.host,
         port: sessionConfig.redis.port,
+        pass: sessionConfig.redis.password
       });
     }
     break;

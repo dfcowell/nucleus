@@ -27,6 +27,7 @@
   "author": "Samuel Attard",
   "license": "Apache-2.0",
   "dependencies": {
+    "@google-cloud/storage": "^1.6.0",
     "aws-sdk": "^2.119.0",
     "body-parser": "^1.17.2",
     "child-process-promise": "^2.2.1",
@@ -54,7 +55,7 @@
     "semver": "^5.4.1",
     "sequelize": "^4.11.1",
     "sequelize-typescript": "^0.5.0",
-    "sqlite3": "^3.1.12",
+    "sqlite3": "^4.0.0",
     "tedious": "^2.0.0",
     "to-ico": "^1.1.5"
   },

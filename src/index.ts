@@ -14,6 +14,8 @@ import store from './files/store';
 import appRouter from './rest/app';
 import { authenticateRouter, setupApp } from './rest/auth';
 
+process.on('unhandledRejection', console.error);
+
 const formData = require('express-form-data');
 
 const d = debug('nucleus');

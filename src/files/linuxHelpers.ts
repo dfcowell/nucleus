@@ -85,21 +85,25 @@ const signRpm = async (rpm: string) => {
   // Import GPG key
   const key = path.resolve(tmpDir, 'key.asc');
   await fs.writeFile(key, config.gpgSigningKey);
-  const { stdout, stderr } = await cp.spawn('gpg', ['--import', key], {
-    capture: ['stdout', 'stderr'],
-  });
-  const keyImport = stdout.toString() + '--' + stderr.toString();
-  const keyId = keyImport.match(/ key ([A-Za-z0-9]+):/)![1];
-  // Sign the RPM file
-  const [exe, args] = getSignRpmCommand(tmpDir, ['-D', `"_gpg_name ${keyId}"`, '--addsign', path.basename(rpm)]);
-  await cp.spawn(exe, args, {
-    cwd: tmpDir,
-    capture: ['stdout'],
-  });
-  // Done signing
-  await fs.copy(tmpFile, rpm, {
-    overwrite: true,
-  });
+  try {
+    const { stdout, stderr } = await cp.spawn('gpg', ['--import', key], {
+      capture: ['stdout', 'stderr'],
+    });
+    const keyImport = stdout.toString() + '--' + stderr.toString();
+    const keyId = keyImport.match(/ key ([A-Za-z0-9]+):/)![1];
+    // Sign the RPM file
+    const [exe, args] = getSignRpmCommand(tmpDir, ['-D', `"_gpg_name ${keyId}"`, '--addsign', path.basename(rpm)]);
+    await cp.spawn(exe, args, {
+      cwd: tmpDir,
+      capture: ['stdout'],
+    });
+    // Done signing
+    await fs.copy(tmpFile, rpm, {
+      overwrite: true,
+    });
+  } catch (err) {
+    console.error(err.stderr);
+  }
   await fs.remove(tmpDir);
 };
 
@@ -205,14 +209,35 @@ const gpgSign = async (file: string, out: string) => {
   const tmpDir = await getTmpDir();
   const key = path.resolve(tmpDir, 'key.asc');
   await fs.writeFile(key, config.gpgSigningKey);
-  const { stdout, stderr } = await cp.spawn('gpg', ['--import', key], {
-    capture: ['stdout', 'stderr'],
-  });
-  await fs.remove(tmpDir);
-  try { await fs.remove(out); } catch (err) {}
-  const keyImport = stdout.toString() + '--' + stderr.toString();
+
+  let spawnResult;
+
+  try {
+    spawnResult = await cp.exec(`GPG_TTY=$(tty) gpg --import ${key}`, {
+      capture: ['stdout', 'stderr'],
+    } as any);
+  } catch (err) {
+    console.error(`gpgSign: exec "gpg --import ${key}" stdErr:`);
+    console.error(err.stderr);
+
+    spawnResult = { stdout: '', stderr: err.stderr };
+  }
+
+  try { await fs.remove(out); } catch (err) {};
+
+  const keyImport = spawnResult.stdout.toString() + '--' + spawnResult.stderr.toString();
   const keyId = keyImport.match(/ key ([A-Za-z0-9]+):/)![1];
-  await cp.spawn('gpg', ['-abs', '--default-key', keyId, '-o', out, file]);
+  
+  try {
+    await cp.exec(`GPG_TTY=$(tty) gpg -abs --default-key ${keyId} -o ${out} ${file}`, {
+      capture: ['stdout', 'stderr'],
+    } as any);
+  } catch (err) {
+    console.error(`gpgSign: exec "gpg -abs --default-key ${keyId} -o ${out} ${file}" failed:`);
+    console.error(err.stderr);
+  }
+
+  await fs.remove(tmpDir);
 };
 
 const generateReleaseFile = async (tmpDir: string, app: NucleusApp) => {
@@ -225,11 +250,11 @@ APT::FTPArchive::Release::Architectures "i386 amd64";
 APT::FTPArchive::Release::Components "main";
 APT::FTPArchive::Release::Description "${app.name}";`);
   const [exe, args] = getAptFtpArchiveCommand(tmpDir, ['-c=Release.conf', 'release', '.']);
-  const { stdout } = await cp.spawn(exe, args, {
+  const output = await cp.spawn(exe, args, {
     cwd: path.resolve(tmpDir),
     capture: ['stdout', 'stderr'],
   });
-  await fs.writeFile(path.resolve(tmpDir, 'Release'), stdout);
+  await fs.writeFile(path.resolve(tmpDir, 'Release'), output.stdout);
   await gpgSign(path.resolve(tmpDir, 'Release'), path.resolve(tmpDir, 'Release.gpg'));
   await fs.remove(configFile);
 };

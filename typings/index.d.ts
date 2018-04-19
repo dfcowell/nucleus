@@ -21,6 +21,13 @@ interface S3Options {
   } | null
 }
 
+interface GCSOptions {
+  bucketName: string;
+  cloudCdn?: {
+    publicUrl: string;
+  }
+}
+
 interface LocalOptions {
   root: string;
   staticUrl: string;
@@ -52,6 +59,7 @@ interface SessionConfig {
   redis?: {
     host: string;
     port: number;
+    password: string;
   }
 }
 
@@ -65,6 +73,7 @@ interface IConfig {
   openid: OpenIDOptions;
   adminIdentifiers: string[];
   s3: S3Options;
+  gcs: GCSOptions;
   local: LocalOptions;
   sequelize: SequelizeOptions;
   localAuth: LocalAuthOptions;
@@ -195,6 +204,14 @@ declare module 'to-ico' {
 
 declare module 'child-process-promise' {
   export const spawn: (exe: string, args: string[], opts?: {
+    cwd?: string;
+    capture?: string[];
+  }) => Promise<{
+    stdout: Buffer;
+    stderr: Buffer;
+  }>;
+
+  export const exec: (exe: string, args: string[], opts?: {
     cwd?: string;
     capture?: string[];
   }) => Promise<{
